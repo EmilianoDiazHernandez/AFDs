@@ -82,7 +82,7 @@ fun buttons (){
                     when(buttonClicked) {
                         1-> states = (states + State(x, y, null)).toMutableList()
                         2-> println("Transition")
-                        3-> states = deleteState(x,y,states)
+                        3-> states = states.filterNot { state -> state.x in x-20f..x+20f && state.y in y-20f..y+20f}.toMutableList()
                     }
                 }
             }
@@ -95,10 +95,6 @@ fun buttons (){
 
     println(buttonClicked)
     println(states)
-}
-
-fun deleteState(x: Float, y: Float, states: MutableList<State>) {
-    states.filterNot { state -> state.x in x-20f..x+20f && state.y in y-20f..y+20f}.toMutableList()
 }
 
 @Composable
