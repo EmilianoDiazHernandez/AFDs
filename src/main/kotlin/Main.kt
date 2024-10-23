@@ -1,31 +1,36 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.AddCircle
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
+import data.State
+import data.Transition
+import ui.CoordsStates
+import ui.CoordsTransitions
 
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
-        buttons()
+        view()
     }
 }
 
@@ -36,86 +41,151 @@ fun main() = application {
 }
 
 @Composable
-fun buttons (){
-    var states: MutableList<State> by remember { mutableStateOf(mutableListOf()) }
-    var buttonClicked:Int by remember { mutableStateOf(0) }
-    var x: Float by remember { mutableStateOf(0f) }
-    var y: Float by remember { mutableStateOf(0f) }
+fun view() {
+    val states: MutableList<CoordsStates> = remember { mutableStateListOf() }
+    val transitions: MutableList<CoordsTransitions> = remember { mutableStateListOf() }
+    var dragState by remember { mutableStateOf<Int?>(null) }
+    var windowTransition: Boolean by remember { mutableStateOf(false) }
 
     Column {
-        Box(modifier = Modifier
-            .wrapContentHeight()
-            .fillMaxWidth()
-            .background(Color.LightGray)
-        ){
+        Box(
+            modifier = Modifier
+                .wrapContentHeight()
+                .fillMaxWidth()
+                .background(Color.LightGray)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                Button(onClick = {buttonClicked = 1 }, colors = ButtonDefaults.buttonColors(Color.White)) {
-                    Icon(Icons.Outlined.AddCircle, "State button")
-                }
-                Button(onClick = {buttonClicked = 2 }, colors = ButtonDefaults.buttonColors(Color.White)) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Transition button")
-                }
-                Button(onClick = {buttonClicked = 3 }, colors = ButtonDefaults.buttonColors(Color.White)) {
-                    Icon(Icons.Outlined.Close, "Transition button")
-                }
-                Button(onClick = {onClickPlay()}, colors = ButtonDefaults.buttonColors(Color.White)) {
-                    Icon(Icons.Filled.PlayArrow, "Play button")
-                }
+                Button(
+                    onClick = {
+                        states.add(CoordsStates(Offset(100f, 100f), State(null)))
+                    },
+                    colors = ButtonDefaults.buttonColors(Color.White)
+                ) { Icon(Icons.Outlined.AddCircle, "New state button") }
+                Button(
+                    onClick = {
+                        windowTransition = true
+                    }, colors = ButtonDefaults.buttonColors(Color.White)
+                ) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Transition button") }
+                Button(
+                    onClick = {
+
+                    }, colors = ButtonDefaults.buttonColors(Color.White)
+                ) { Icon(Icons.Filled.PlayArrow, "Play button") }
             }
         }
-        Canvas(modifier = Modifier
-            .fillMaxSize()
-            .border(BorderStroke(1.dp, Color.Black))
-            .background(Color.White)
+        Canvas(modifier = Modifier.fillMaxSize().background(Color.White)
             .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                    x = offset.x
-                    y = offset.y
-                    println("x: " + offset.x+", y: " + offset.y)
-                    when(buttonClicked) {
-                        1-> states = (states + State(x, y, null)).toMutableList()
-                        2-> println("Transition")
-                        3-> states = states.filterNot { state -> state.x in x-20f..x+20f && state.y in y-20f..y+20f}.toMutableList()
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        dragState = states.indexOfFirst {
+                            (offset - it.offset).getDistance() < 25f
+                        }.takeIf { it != -1 }
+                    },
+                    onDrag = { change, dragAmount ->
+                        dragState?.let { index ->
+                            val currentState = states[index]
+                            states[index] = currentState.copy(
+                                offset = currentState.offset + dragAmount
+                            )
+                        }
+                        change.consume()
+                    },
+                    onDragEnd = {
+                        dragState = null
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = { offset ->
+                        states.indexOfFirst { (offset - it.offset).getDistance() < 25f }
+                            .takeIf { it != -1 }
+                            ?.let { index -> states.removeAt(index) }
+                    }
+                )
+            }
+        ) {
+            transitions.forEach { transition ->
+                drawLine(color = Color.Black, transition.CoordState1.offset, transition.CoordState2.offset)
+            }
+            states.forEach { state ->
+                drawCircle(color = Color.LightGray, radius = 25f, state.offset)
+            }
+        }
+        if (windowTransition) {
+            createTransition(states, onCloseRequest = { windowTransition = false })?.let { transitions.add(it) }
+        }
+    }
+}
+
+
+@Composable
+fun createTransition(states: MutableList<CoordsStates>, onCloseRequest: () -> Unit): CoordsTransitions? {
+    var a by remember { mutableStateOf("") }
+    var state1: CoordsStates? by remember { mutableStateOf(null) }
+    var state2: CoordsStates? by remember { mutableStateOf(null) }
+    var confirm by remember { mutableStateOf(false) }
+
+    Window(
+        onCloseRequest = onCloseRequest,
+        resizable = false,
+        title = "AFD's transition",
+        state = rememberWindowState(width = 400.dp, height = 300.dp)
+    ) {
+        Column {
+            Row(modifier = Modifier.height(180.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                LazyColumn(modifier = Modifier.weight(1f).padding(10.dp)) {
+                    item { Text("Estado Inicio") }
+                    itemsIndexed(states) { index, item ->
+                        Text(
+                            index.toString(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    state1 = states[index]
+                                }
+                                .background(if (state1 == states[index]) Color.LightGray else Color.Transparent)
+                        )
+                    }
+                }
+                LazyColumn(modifier = Modifier.weight(1f).padding(10.dp)) {
+                    item { Text("Estado Fin") }
+                    itemsIndexed(states) { index, item ->
+                        Text(
+                            index.toString(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    state2 = states[index]
+                                }
+                                .background(if (state2 == states[index]) Color.LightGray else Color.Transparent)
+                        )
                     }
                 }
             }
-        ){
-            states.forEach{ state->
-                drawState(state.x,state.y,states.size)
+            Row(modifier = Modifier.height(70.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                TextField(
+                    value = a,
+                    onValueChange = { newText -> a = newText },
+                    label = { Text("Caracter de transicion") },
+                    modifier = Modifier.weight(1f).padding(10.dp)
+                )
+                Button(
+                    modifier = Modifier.padding(10.dp).fillMaxHeight(),
+                    onClick = {
+                        confirm = true
+                    }, colors = ButtonDefaults.buttonColors(Color.White)
+                ) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Transition button") }
             }
         }
     }
-
-    println(buttonClicked)
-    println(states)
-}
-
-@Composable
-fun onClickTransition(onClose: () -> Unit) {
-    var text by remember { mutableStateOf(TextFieldValue("")) }
-    Window(onCloseRequest = { onClose() }, title = "Caracter de transicion ") {
-        Column (modifier = Modifier
-            .wrapContentSize()
-            .padding(15.dp)
-        ) {
-            TextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Label") }
-            )
-        }
+    if (state1 != null && state2 != null && confirm){
+        confirm = false
+        return CoordsTransitions(state1!!, state2!!, Transition(a, state2!!.id))
     }
-}
-
-fun onClickPlay() {
-    println("Play")
-}
-
-// Función para dibujar un estado
-fun DrawScope.drawState(x: Float, y: Float, label: Int) {
-    drawCircle(Color.LightGray, radius = 25f, center = androidx.compose.ui.geometry.Offset(x, y))
-
+    else
+        return null
 }
