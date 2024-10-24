@@ -2,5 +2,4 @@ package ui
 
 import data.Transition
 
-class CoordsTransitions (val CoordState1: CoordsStates, val CoordState2: CoordsStates, val id: Transition) {
-}
+data class CoordsTransitions (val coordState1: CoordsStates, val coordState2: CoordsStates, val id: Transition)

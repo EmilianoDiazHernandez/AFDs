@@ -1,5 +1,3 @@
 package data
 
-class State (val args: Array<Transition>?) {
-
-}
+class State (val args: Array<Transition>?)

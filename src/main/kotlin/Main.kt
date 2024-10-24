@@ -60,7 +60,7 @@ fun view() {
             ) {
                 Button(
                     onClick = {
-                        states.add(CoordsStates(Offset(100f, 100f), State(null)))
+                        states.add(CoordsStates(mutableStateOf(Offset(100f, 100f)) , State(null)))
                     },
                     colors = ButtonDefaults.buttonColors(Color.White)
                 ) { Icon(Icons.Outlined.AddCircle, "New state button") }
@@ -81,15 +81,12 @@ fun view() {
                 detectDragGestures(
                     onDragStart = { offset ->
                         dragState = states.indexOfFirst {
-                            (offset - it.offset).getDistance() < 25f
+                            (offset - it.offset.value).getDistance() < 25f
                         }.takeIf { it != -1 }
                     },
                     onDrag = { change, dragAmount ->
-                        dragState?.let { index ->
-                            val currentState = states[index]
-                            states[index] = currentState.copy(
-                                offset = currentState.offset + dragAmount
-                            )
+                        dragState?.let { i ->
+                            states[i].offset.value +=  dragAmount
                         }
                         change.consume()
                     },
@@ -101,7 +98,7 @@ fun view() {
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = { offset ->
-                        states.indexOfFirst { (offset - it.offset).getDistance() < 25f }
+                        states.indexOfFirst { (offset - it.offset.value).getDistance() < 25f }
                             .takeIf { it != -1 }
                             ?.let { index -> states.removeAt(index) }
                     }
@@ -109,10 +106,10 @@ fun view() {
             }
         ) {
             transitions.forEach { transition ->
-                drawLine(color = Color.Black, transition.CoordState1.offset, transition.CoordState2.offset)
+                drawLine(color = Color.Black, transition.coordState1.offset.value, transition.coordState2.offset.value)
             }
             states.forEach { state ->
-                drawCircle(color = Color.LightGray, radius = 25f, state.offset)
+                drawCircle(color = Color.LightGray, radius = 25f, state.offset.value)
             }
         }
         if (windowTransition) {
@@ -145,7 +142,7 @@ fun createTransition(states: MutableList<CoordsStates>, onCloseRequest: () -> Un
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    state1 = states[index]
+                                    state1 = item
                                 }
                                 .background(if (state1 == states[index]) Color.LightGray else Color.Transparent)
                         )
@@ -159,7 +156,7 @@ fun createTransition(states: MutableList<CoordsStates>, onCloseRequest: () -> Un
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    state2 = states[index]
+                                    state2 = item
                                 }
                                 .background(if (state2 == states[index]) Color.LightGray else Color.Transparent)
                         )
@@ -182,10 +179,9 @@ fun createTransition(states: MutableList<CoordsStates>, onCloseRequest: () -> Un
             }
         }
     }
-    if (state1 != null && state2 != null && confirm){
+    if (state1 != null && state2 != null && confirm) {
         confirm = false
         return CoordsTransitions(state1!!, state2!!, Transition(a, state2!!.id))
-    }
-    else
+    } else
         return null
 }
