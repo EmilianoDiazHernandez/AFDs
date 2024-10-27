@@ -1,3 +1,5 @@
 package data
 
-class State (val args: Array<Transition>?)
+import androidx.compose.runtime.MutableState
+
+class State(var type: MutableState<TypeState>, val transitions: MutableList<Transition>)

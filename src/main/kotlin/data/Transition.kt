@@ -1,3 +1,3 @@
 package data
 
-class Transition(val char: String, val goTo: State)
+class Transition(val char: Char, val goTo: State)
