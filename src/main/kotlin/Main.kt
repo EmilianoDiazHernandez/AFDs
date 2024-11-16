@@ -187,7 +187,7 @@ fun viewState(
 
 @Composable
 fun viewTransition(states: MutableList<StateCoords>, onCloseRequest: () -> Unit): TransitionCoords? {
-    var a: String by remember { mutableStateOf(" ") }
+    var a: String by remember { mutableStateOf("ε") }
     var state1: StateCoords? by remember { mutableStateOf(null) }
     var state2: StateCoords? by remember { mutableStateOf(null) }
     var confirm by remember { mutableStateOf(false) }
@@ -229,8 +229,10 @@ fun viewTransition(states: MutableList<StateCoords>, onCloseRequest: () -> Unit)
                 TextField(
                     value = a,
                     onValueChange = { newText ->
-                        if (newText.last().isLetterOrDigit() || newText.last().isWhitespace())
+                        if (newText.last().isLetterOrDigit())
                             a = newText.last().toString()
+                        if (newText.last() == ' ')
+                            a = "ε"
                     },
                     label = { Text("Caracter de transicion") },
                     modifier = Modifier.weight(1f).padding(10.dp)

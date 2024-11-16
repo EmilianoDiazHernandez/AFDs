@@ -4,23 +4,25 @@ import data.State
 import data.TypeState
 
 fun validInput(input: String, states: List<State>): String {
-    var currentStates: MutableList<State> = (mutableListOf())
-    val newStates: MutableList<State> = (mutableListOf())
+    var currentStates = states.filter { it.type.value == TypeState.INITIAL }.toMutableList()
 
-    states.firstOrNull { it.type.value == TypeState.INITIAL }?.let { currentStates.add(it) }
-        ?: return "No hay estado inicial"
+    if (currentStates.isEmpty()) return "No hay estado inicial"
 
     input.forEach { char ->
-        newStates.clear()
-        currentStates.forEach { state ->
-            state.transitions.forEach { transition ->
-                if (transition.char == char) {
-                    newStates.add(transition.goTo)
+        currentStates = currentStates.flatMap { state ->
+            state.transitions.filter { it.char == char || it.char == 'ε' }
+                .flatMap { transition ->
+                    if (transition.char == char) listOf(transition.goTo)
+                    else transition.goTo.transitions.filter { it.char == char }.map { it.goTo }
                 }
-            }
-        }
-        currentStates = newStates.toMutableList()
+        }.toMutableList()
     }
+
+    currentStates.addAll(
+        currentStates.flatMap { state ->
+            state.transitions.filter { it.char == 'ε' }.map { it.goTo }
+        }
+    )
 
     return if (currentStates.any { it.type.value == TypeState.FINAL }) "Cadena aceptada" else "Cadena rechazada"
 }
